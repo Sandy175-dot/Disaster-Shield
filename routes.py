@@ -1,4 +1,5 @@
 import logging
+import random
 from datetime import datetime, timedelta
 from flask import render_template, request, redirect, url_for, flash, jsonify, abort
 from flask_login import login_user, logout_user, login_required, current_user
@@ -93,7 +94,8 @@ def dashboard():
                          regions=regions,
                          recent_alerts=recent_alerts,
                          alert_stats=alert_stats,
-                         system_health=system_health)
+                         system_health=system_health,
+                         datetime=datetime)
 
 @app.route('/alerts')
 @login_required
@@ -130,7 +132,8 @@ def alerts():
                          },
                          severity_options=AlertSeverity,
                          status_options=AlertStatus,
-                         disaster_type_options=DisasterType)
+                         disaster_type_options=DisasterType,
+                         datetime=datetime)
 
 @app.route('/alerts/<int:alert_id>/acknowledge', methods=['POST'])
 @login_required
@@ -189,7 +192,7 @@ def regions():
         .outerjoin(MonitoringStatus)\
         .all()
     
-    return render_template('regions.html', regions=regions)
+    return render_template('regions.html', regions=regions, datetime=datetime)
 
 @app.route('/regions/<int:region_id>/analyze', methods=['POST'])
 @login_required
@@ -289,6 +292,10 @@ def stop_monitoring():
 @app.route('/statistics')
 @login_required
 def statistics():
+    # Generate historic data if there are no alerts
+    if Alert.query.count() == 0:
+        generate_historic_alerts()
+    
     # Alert statistics by type
     alert_by_type = db.session.query(
         Alert.disaster_type,
@@ -321,7 +328,8 @@ def statistics():
                          alert_by_type=alert_by_type,
                          alert_by_severity=alert_by_severity,
                          regional_stats=regional_stats,
-                         daily_alerts=daily_alerts)
+                         daily_alerts=daily_alerts,
+                         datetime=datetime)
 
 # API endpoints for AJAX requests
 @app.route('/api/regions/<int:region_id>/status')
@@ -365,6 +373,75 @@ def handle_connect():
 def handle_disconnect():
     if current_user.is_authenticated:
         logging.info(f'User {current_user.username} disconnected from WebSocket')
+
+def generate_historic_alerts():
+    """Generate historic alert data for demonstration purposes"""
+    try:
+        regions = Region.query.all()
+        if not regions:
+            return
+        
+        # Create historic alerts for the past 30 days
+        disaster_types = list(DisasterType)
+        severities = list(AlertSeverity)
+        statuses = list(AlertStatus)
+        
+        historic_alerts = []
+        
+        for i in range(50):  # Generate 50 historic alerts
+            days_back = random.randint(1, 30)
+            alert_date = datetime.utcnow() - timedelta(days=days_back)
+            
+            region = random.choice(regions)
+            disaster_type = random.choice(disaster_types)
+            severity = random.choice(severities)
+            status = random.choice(statuses)
+            
+            # Generate realistic titles and descriptions
+            disaster_titles = {
+                DisasterType.EARTHQUAKE: ["Seismic Activity Detected", "Earthquake Warning", "Ground Tremor Alert"],
+                DisasterType.FLOOD: ["Flooding Risk High", "Water Level Rising", "Flood Alert Issued"],
+                DisasterType.FIRE: ["Fire Outbreak Detected", "Wildfire Alert", "Fire Risk Critical"],
+                DisasterType.CYCLONE: ["Cyclone Formation", "Storm System Approaching", "Cyclone Warning"],
+                DisasterType.LANDSLIDE: ["Landslide Risk High", "Slope Instability", "Landslide Warning"],
+                DisasterType.DROUGHT: ["Drought Conditions", "Water Scarcity Alert", "Drought Warning"],
+                DisasterType.TSUNAMI: ["Tsunami Alert", "Sea Wave Warning", "Coastal Alert"]
+            }
+            
+            title = random.choice(disaster_titles.get(disaster_type, ["Alert Detected"]))
+            
+            alert = Alert(
+                region_id=region.id,
+                disaster_type=disaster_type,
+                severity=severity,
+                status=status,
+                title=title,
+                description=f"Historic {disaster_type.value} alert for {region.name} area",
+                latitude=region.center_latitude + random.uniform(-0.1, 0.1),
+                longitude=region.center_longitude + random.uniform(-0.1, 0.1),
+                confidence_score=random.uniform(0.7, 0.98),
+                prediction_model="HistoricDataGenerator",
+                estimated_affected_population=random.randint(1000, 50000),
+                detected_at=alert_date
+            )
+            
+            # Set acknowledgment and resolution times for non-active alerts
+            if status != AlertStatus.ACTIVE:
+                alert.acknowledged_at = alert_date + timedelta(minutes=random.randint(5, 30))
+                if status == AlertStatus.RESOLVED:
+                    alert.resolved_at = alert.acknowledged_at + timedelta(hours=random.randint(1, 12))
+            
+            historic_alerts.append(alert)
+        
+        # Bulk insert all alerts
+        db.session.bulk_save_objects(historic_alerts)
+        db.session.commit()
+        
+        logging.info(f"Generated {len(historic_alerts)} historic alerts")
+        
+    except Exception as e:
+        logging.error(f"Error generating historic alerts: {str(e)}")
+        db.session.rollback()
 
 # Initialize default regions if they don't exist
 def initialize_default_data():
