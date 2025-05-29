@@ -41,9 +41,12 @@ class User(UserMixin, db.Model):
     full_name = db.Column(db.String(100), nullable=False)
     department = db.Column(db.String(100))
     phone = db.Column(db.String(20))
-    is_active = db.Column(db.Boolean, default=True)
+    active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime)
+    
+    def __init__(self, **kwargs):
+        super(User, self).__init__(**kwargs)
 
     def __repr__(self):
         return f'<User {self.username}>'
@@ -111,6 +114,9 @@ class Alert(db.Model):
     
     acknowledged_by = db.relationship('User', foreign_keys=[acknowledged_by_id])
     resolved_by = db.relationship('User', foreign_keys=[resolved_by_id])
+    
+    def __init__(self, **kwargs):
+        super(Alert, self).__init__(**kwargs)
 
     def __repr__(self):
         return f'<Alert {self.title} - {self.severity.value}>'
@@ -135,6 +141,9 @@ class MonitoringStatus(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     region = db.relationship('Region', backref='monitoring_status')
+    
+    def __init__(self, **kwargs):
+        super(MonitoringStatus, self).__init__(**kwargs)
 
     def __repr__(self):
         return f'<MonitoringStatus {self.region.name if self.region else "Unknown"}>'

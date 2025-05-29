@@ -221,18 +221,17 @@ def analyze_region(region_id):
         # Generate alerts if threats detected
         if analysis_result.get('threats'):
             for threat in analysis_result['threats']:
-                alert = Alert(
-                    region_id=region.id,
-                    disaster_type=DisasterType(threat['type']),
-                    severity=AlertSeverity(threat['severity']),
-                    title=threat['title'],
-                    description=threat['description'],
-                    latitude=threat.get('latitude', region.center_latitude),
-                    longitude=threat.get('longitude', region.center_longitude),
-                    confidence_score=threat.get('confidence', 0.0),
-                    prediction_model=threat.get('model', 'DisasterDetectionAI'),
-                    estimated_affected_population=threat.get('affected_population', 0)
-                )
+                alert = Alert()
+                alert.region_id = region.id
+                alert.disaster_type = DisasterType(threat['type'])
+                alert.severity = AlertSeverity(threat['severity'])
+                alert.title = threat['title']
+                alert.description = threat['description']
+                alert.latitude = threat.get('latitude', region.center_latitude)
+                alert.longitude = threat.get('longitude', region.center_longitude)
+                alert.confidence_score = threat.get('confidence', 0.0)
+                alert.prediction_model = threat.get('model', 'DisasterDetectionAI')
+                alert.estimated_affected_population = threat.get('affected_population', 0)
                 db.session.add(alert)
         
         db.session.commit()
@@ -419,11 +418,10 @@ def initialize_default_data():
             db.session.add(region)
             
             # Create monitoring status for each region
-            monitoring_status = MonitoringStatus(
-                region=region,
-                is_monitoring=False,
-                threat_level='normal'
-            )
+            monitoring_status = MonitoringStatus()
+            monitoring_status.region_id = region.id
+            monitoring_status.is_monitoring = False
+            monitoring_status.threat_level = 'normal'
             db.session.add(monitoring_status)
         
         db.session.commit()
