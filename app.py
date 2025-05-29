@@ -34,7 +34,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 # Initialize Flask-Login
 login_manager = LoginManager()
 login_manager.init_app(app)
-login_manager.login_view = 'login'
+login_manager.login_view = 'login'  # type: ignore
 login_manager.login_message = 'Please log in to access the disaster management system.'
 
 @login_manager.user_loader
@@ -54,20 +54,23 @@ with app.app_context():
     from werkzeug.security import generate_password_hash
     
     if not User.query.filter_by(username='admin').first():
-        admin_user = User(
-            username='admin',
-            email='admin@disaster-mgmt.com',
-            password_hash=generate_password_hash('admin123'),
-            role=UserRole.ADMINISTRATOR,
-            full_name='System Administrator',
-            department='Administration'
-        )
+        admin_user = User()
+        admin_user.username = 'admin'
+        admin_user.email = 'admin@disaster-mgmt.com'
+        admin_user.password_hash = generate_password_hash('admin123')
+        admin_user.role = UserRole.ADMINISTRATOR
+        admin_user.full_name = 'System Administrator'
+        admin_user.department = 'Administration'
         db.session.add(admin_user)
         db.session.commit()
         logging.info("Default admin user created: admin/admin123")
 
 # Import routes after app initialization
 import routes
+
+# Initialize default data
+with app.app_context():
+    routes.initialize_default_data()
 
 if __name__ == '__main__':
     # Start the monitoring service

@@ -33,7 +33,7 @@ def login():
         
         user = User.query.filter_by(username=username).first()
         
-        if user and check_password_hash(user.password_hash, password):
+        if user and password and user.password_hash and check_password_hash(user.password_hash, password):
             login_user(user)
             user.last_login = datetime.utcnow()
             db.session.commit()
@@ -209,7 +209,8 @@ def analyze_region(region_id):
         # Update monitoring status
         monitoring_status = MonitoringStatus.query.filter_by(region_id=region.id).first()
         if not monitoring_status:
-            monitoring_status = MonitoringStatus(region_id=region.id)
+            monitoring_status = MonitoringStatus()
+            monitoring_status.region_id = region.id
             db.session.add(monitoring_status)
         
         monitoring_status.last_analysis_at = datetime.utcnow()
@@ -367,7 +368,6 @@ def handle_disconnect():
         logging.info(f'User {current_user.username} disconnected from WebSocket')
 
 # Initialize default regions if they don't exist
-@app.before_first_request
 def initialize_default_data():
     # Check if regions exist
     if Region.query.count() == 0:
