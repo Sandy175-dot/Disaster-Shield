@@ -413,11 +413,17 @@ def initialize_default_data():
             }
         ]
         
+        # First, create and commit all regions
+        regions = []
         for region_data in default_regions:
             region = Region(**region_data)
             db.session.add(region)
-            
-            # Create monitoring status for each region
+            regions.append(region)
+        
+        db.session.commit()  # Commit regions first to get their IDs
+        
+        # Then create monitoring status for each region
+        for region in regions:
             monitoring_status = MonitoringStatus()
             monitoring_status.region_id = region.id
             monitoring_status.is_monitoring = False
