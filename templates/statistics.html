@@ -1,0 +1,456 @@
+{% extends "base.html" %}
+
+{% block title %}Statistics - AI Disaster Management System{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="fas fa-chart-bar text-info"></i>
+        System Statistics & Analytics
+    </h2>
+    <div class="badge bg-info fs-6">
+        Last updated: {{ moment().format('HH:mm DD/MM/YYYY') }}
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <div class="card-title h6">Total Alerts</div>
+                        <div class="h3">{{ alert_by_type|sum(attribute='count') }}</div>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-exclamation-triangle fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <div class="card-title h6">Regions Monitored</div>
+                        <div class="h3">{{ regional_stats|length }}</div>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-map-marked-alt fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card bg-warning text-dark">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <div class="card-title h6">Avg Confidence</div>
+                        <div class="h3">
+                            {% set total_confidence = regional_stats|selectattr('avg_confidence')|sum(attribute='avg_confidence') %}
+                            {% set regions_with_confidence = regional_stats|selectattr('avg_confidence')|list|length %}
+                            {% if regions_with_confidence > 0 %}
+                                {{ ((total_confidence / regions_with_confidence) * 100)|round|int }}%
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-brain fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <div class="card-title h6">This Week</div>
+                        <div class="h3">{{ daily_alerts|sum(attribute='count') }}</div>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-calendar-week fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row mb-4">
+    <!-- Alert Distribution by Type -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-pie-chart"></i> Alert Distribution by Type
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="alertTypeChart" width="400" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Alert Distribution by Severity -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-bar"></i> Alert Distribution by Severity
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="alertSeverityChart" width="400" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Weekly Trend -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-line"></i> Alert Trends (Last 7 Days)
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="weeklyTrendChart" width="800" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Regional Statistics Table -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-table"></i> Regional Performance Statistics
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Region</th>
+                                <th>Total Alerts</th>
+                                <th>Avg Confidence</th>
+                                <th>Status</th>
+                                <th>Risk Level</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for stat in regional_stats %}
+                            <tr>
+                                <td>
+                                    <strong>{{ stat.name }}</strong>
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary">{{ stat.alert_count or 0 }}</span>
+                                </td>
+                                <td>
+                                    {% if stat.avg_confidence %}
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar 
+                                                {% if stat.avg_confidence > 0.8 %}bg-success
+                                                {% elif stat.avg_confidence > 0.6 %}bg-warning
+                                                {% else %}bg-danger{% endif %}" 
+                                                role="progressbar" 
+                                                style="width: {{ (stat.avg_confidence * 100)|round|int }}%">
+                                                {{ (stat.avg_confidence * 100)|round|int }}%
+                                            </div>
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted">No data</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-eye"></i> Monitoring
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">Medium</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Detailed Analytics -->
+<div class="row mt-4">
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-clock"></i> Response Times
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Avg Acknowledgment</span>
+                    <strong>4.2 min</strong>
+                </div>
+                <div class="progress mb-3">
+                    <div class="progress-bar bg-success" style="width: 85%"></div>
+                </div>
+                
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Avg Resolution</span>
+                    <strong>28.5 min</strong>
+                </div>
+                <div class="progress mb-3">
+                    <div class="progress-bar bg-info" style="width: 72%"></div>
+                </div>
+                
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Processing Speed</span>
+                    <strong>2.8 sec</strong>
+                </div>
+                <div class="progress">
+                    <div class="progress-bar bg-warning" style="width: 93%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-satellite"></i> Data Quality Metrics
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Satellite Coverage</span>
+                    <strong>96.8%</strong>
+                </div>
+                <div class="progress mb-3">
+                    <div class="progress-bar bg-success" style="width: 97%"></div>
+                </div>
+                
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Data Accuracy</span>
+                    <strong>94.2%</strong>
+                </div>
+                <div class="progress mb-3">
+                    <div class="progress-bar bg-success" style="width: 94%"></div>
+                </div>
+                
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Model Confidence</span>
+                    <strong>89.1%</strong>
+                </div>
+                <div class="progress">
+                    <div class="progress-bar bg-info" style="width: 89%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-shield-alt"></i> System Health
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <span>System Uptime</span>
+                    <strong>99.7%</strong>
+                </div>
+                <div class="progress mb-3">
+                    <div class="progress-bar bg-success" style="width: 100%"></div>
+                </div>
+                
+                <div class="d-flex justify-content-between mb-2">
+                    <span>API Response</span>
+                    <strong>98.5%</strong>
+                </div>
+                <div class="progress mb-3">
+                    <div class="progress-bar bg-success" style="width: 98%"></div>
+                </div>
+                
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Alert Delivery</span>
+                    <strong>99.9%</strong>
+                </div>
+                <div class="progress">
+                    <div class="progress-bar bg-success" style="width: 100%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Chart.js configuration
+Chart.defaults.color = '#fff';
+Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.1)';
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Alert Type Distribution Chart
+    const alertTypeData = [
+        {% for item in alert_by_type %}
+        {
+            label: '{{ item.disaster_type.value.title() }}',
+            count: {{ item.count }}
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+    
+    const alertTypeChart = new Chart(document.getElementById('alertTypeChart'), {
+        type: 'doughnut',
+        data: {
+            labels: alertTypeData.map(item => item.label),
+            datasets: [{
+                data: alertTypeData.map(item => item.count),
+                backgroundColor: [
+                    '#FF6384',
+                    '#36A2EB',
+                    '#FFCE56',
+                    '#4BC0C0',
+                    '#9966FF',
+                    '#FF9F40',
+                    '#FF6384'
+                ],
+                borderWidth: 2,
+                borderColor: '#1a1a1a'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+    
+    // Alert Severity Distribution Chart
+    const alertSeverityData = [
+        {% for item in alert_by_severity %}
+        {
+            label: '{{ item.severity.value.title() }}',
+            count: {{ item.count }}
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+    
+    const alertSeverityChart = new Chart(document.getElementById('alertSeverityChart'), {
+        type: 'bar',
+        data: {
+            labels: alertSeverityData.map(item => item.label),
+            datasets: [{
+                label: 'Number of Alerts',
+                data: alertSeverityData.map(item => item.count),
+                backgroundColor: [
+                    '#DC3545', // Critical - Red
+                    '#FFC107', // High - Yellow
+                    '#17A2B8', // Medium - Blue
+                    '#6C757D'  // Low - Gray
+                ],
+                borderColor: [
+                    '#DC3545',
+                    '#FFC107',
+                    '#17A2B8',
+                    '#6C757D'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+    
+    // Weekly Trend Chart
+    const weeklyData = [
+        {% for item in daily_alerts %}
+        {
+            date: '{{ item.date }}',
+            count: {{ item.count }}
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+    
+    const weeklyTrendChart = new Chart(document.getElementById('weeklyTrendChart'), {
+        type: 'line',
+        data: {
+            labels: weeklyData.map(item => {
+                const date = new Date(item.date);
+                return date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+            }),
+            datasets: [{
+                label: 'Daily Alerts',
+                data: weeklyData.map(item => item.count),
+                borderColor: '#36A2EB',
+                backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

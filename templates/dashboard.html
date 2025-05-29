@@ -1,0 +1,304 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - AI Disaster Management System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- System Status Cards -->
+    <div class="col-md-3 mb-4">
+        <div class="card bg-danger text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <div class="card-title h5">
+                            <i class="fas fa-exclamation-triangle"></i> Critical Alerts
+                        </div>
+                        <div class="display-6">{{ alert_stats.critical_alerts }}</div>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-exclamation-triangle fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-4">
+        <div class="card bg-warning text-dark">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <div class="card-title h5">
+                            <i class="fas fa-bell"></i> Active Alerts
+                        </div>
+                        <div class="display-6">{{ alert_stats.total_active }}</div>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-bell fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-4">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <div class="card-title h5">
+                            <i class="fas fa-check-circle"></i> Acknowledged
+                        </div>
+                        <div class="display-6">{{ alert_stats.total_acknowledged }}</div>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-check-circle fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-4">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <div class="card-title h5">
+                            <i class="fas fa-calendar-day"></i> Resolved Today
+                        </div>
+                        <div class="display-6">{{ alert_stats.total_resolved_today }}</div>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-calendar-day fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- System Control Panel -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-cogs"></i> System Control
+                </h5>
+                <div class="badge {% if system_health.is_monitoring %}bg-success{% else %}bg-secondary{% endif %}">
+                    {% if system_health.is_monitoring %}Monitoring Active{% else %}Monitoring Stopped{% endif %}
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-4">
+                        <div class="border rounded p-3">
+                            <div class="h4 text-primary">{{ system_health.regions_monitored }}</div>
+                            <small class="text-muted">Regions Monitored</small>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="border rounded p-3">
+                            <div class="h4 text-info" id="system-uptime">--:--:--</div>
+                            <small class="text-muted">System Uptime</small>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="border rounded p-3">
+                            <div class="h4 text-success" id="last-update">
+                                {% if system_health.last_update %}
+                                    {{ system_health.last_update.strftime('%H:%M') }}
+                                {% else %}
+                                    --:--
+                                {% endif %}
+                            </div>
+                            <small class="text-muted">Last Update</small>
+                        </div>
+                    </div>
+                </div>
+
+                {% if current_user.role.value in ['administrator', 'rescue_department'] %}
+                <div class="d-flex gap-2 mt-3">
+                    <form method="POST" action="{{ url_for('start_monitoring') }}" class="flex-fill">
+                        <button type="submit" class="btn btn-success w-100" 
+                                {% if system_health.is_monitoring %}disabled{% endif %}>
+                            <i class="fas fa-play"></i> Start Monitoring
+                        </button>
+                    </form>
+                    <form method="POST" action="{{ url_for('stop_monitoring') }}" class="flex-fill">
+                        <button type="submit" class="btn btn-danger w-100"
+                                {% if not system_health.is_monitoring %}disabled{% endif %}>
+                            <i class="fas fa-stop"></i> Stop Monitoring
+                        </button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Alerts -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-clock"></i> Recent Alerts
+                </h5>
+                <a href="{{ url_for('alerts') }}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body p-0">
+                {% if recent_alerts %}
+                <div class="list-group list-group-flush" id="recent-alerts-list">
+                    {% for alert in recent_alerts %}
+                    <div class="list-group-item d-flex justify-content-between align-items-start">
+                        <div class="me-auto">
+                            <div class="fw-bold d-flex align-items-center">
+                                {% if alert.severity.value == 'critical' %}
+                                    <span class="badge bg-danger me-2">{{ alert.severity.value.title() }}</span>
+                                {% elif alert.severity.value == 'high' %}
+                                    <span class="badge bg-warning me-2">{{ alert.severity.value.title() }}</span>
+                                {% elif alert.severity.value == 'medium' %}
+                                    <span class="badge bg-info me-2">{{ alert.severity.value.title() }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary me-2">{{ alert.severity.value.title() }}</span>
+                                {% endif %}
+                                {{ alert.title }}
+                            </div>
+                            <small class="text-muted">
+                                <i class="fas fa-map-marker-alt"></i> {{ alert.region.name }} • 
+                                <i class="fas fa-clock"></i> {{ alert.detected_at.strftime('%H:%M %d/%m') }}
+                            </small>
+                        </div>
+                        <span class="badge bg-secondary rounded-pill">
+                            {{ (alert.confidence_score * 100)|round|int }}%
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4 text-muted">
+                    <i class="fas fa-shield-alt fa-3x mb-3"></i>
+                    <p>No recent alerts. System is monitoring normally.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Regional Status Map and Table -->
+<div class="row">
+    <div class="col-md-8 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-globe"></i> Regional Monitoring Map
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div id="regions-map" style="height: 400px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-list"></i> Regional Status
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0" id="regions-status-table">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Region</th>
+                                <th>Status</th>
+                                <th>Threat</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for region, monitoring_status in regions %}
+                            <tr data-region-id="{{ region.id }}">
+                                <td>
+                                    <strong>{{ region.name }}</strong>
+                                    <br>
+                                    <small class="text-muted">
+                                        {% if monitoring_status and monitoring_status.last_analysis_at %}
+                                            Last: {{ monitoring_status.last_analysis_at.strftime('%H:%M') }}
+                                        {% else %}
+                                            Not analyzed
+                                        {% endif %}
+                                    </small>
+                                </td>
+                                <td>
+                                    {% if monitoring_status and monitoring_status.is_monitoring %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-eye"></i> Active
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">
+                                            <i class="fas fa-eye-slash"></i> Inactive
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if monitoring_status %}
+                                        {% set threat_level = monitoring_status.threat_level %}
+                                        {% if threat_level == 'critical' %}
+                                            <span class="badge bg-danger">Critical</span>
+                                        {% elif threat_level == 'high' %}
+                                            <span class="badge bg-warning">High</span>
+                                        {% elif threat_level == 'medium' %}
+                                            <span class="badge bg-info">Medium</span>
+                                        {% elif threat_level == 'low' %}
+                                            <span class="badge bg-success">Low</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Normal</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="badge bg-secondary">Unknown</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<script src="{{ url_for('static', filename='js/maps.js') }}"></script>
+
+<script>
+// Initialize regional data for map
+const regionData = [
+    {% for region, monitoring_status in regions %}
+    {
+        id: {{ region.id }},
+        name: "{{ region.name }}",
+        center: [{{ region.center_latitude }}, {{ region.center_longitude }}],
+        bounds: [
+            [{{ region.min_latitude }}, {{ region.min_longitude }}],
+            [{{ region.max_latitude }}, {{ region.max_longitude }}]
+        ],
+        threatLevel: "{% if monitoring_status %}{{ monitoring_status.threat_level }}{% else %}normal{% endif %}",
+        isMonitoring: {% if monitoring_status and monitoring_status.is_monitoring %}true{% else %}false{% endif %},
+        population: {{ region.population or 0 }}
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+
+// Initialize the dashboard map
+document.addEventListener('DOMContentLoaded', function() {
+    initializeDashboardMap(regionData);
+});
+</script>
+{% endblock %}

@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+
+{% block title %}Alerts - AI Disaster Management System{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="fas fa-exclamation-triangle text-warning"></i>
+        Alert Management
+    </h2>
+    <div class="badge bg-info fs-6">
+        {{ alerts|length }} alerts found
+    </div>
+</div>
+
+<!-- Filter Panel -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h6 class="mb-0">
+            <i class="fas fa-filter"></i> Filter Alerts
+        </h6>
+    </div>
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('alerts') }}">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Severity</label>
+                    <select name="severity" class="form-select">
+                        <option value="">All Severities</option>
+                        {% for severity in severity_options %}
+                        <option value="{{ severity.value }}" 
+                                {% if current_filters.severity == severity.value %}selected{% endif %}>
+                            {{ severity.value.title() }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-select">
+                        <option value="">All Statuses</option>
+                        {% for status in status_options %}
+                        <option value="{{ status.value }}" 
+                                {% if current_filters.status == status.value %}selected{% endif %}>
+                            {{ status.value.title() }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Disaster Type</label>
+                    <select name="disaster_type" class="form-select">
+                        <option value="">All Types</option>
+                        {% for disaster_type in disaster_type_options %}
+                        <option value="{{ disaster_type.value }}" 
+                                {% if current_filters.disaster_type == disaster_type.value %}selected{% endif %}>
+                            {{ disaster_type.value.title() }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Region</label>
+                    <select name="region" class="form-select">
+                        <option value="">All Regions</option>
+                        {% for region in regions %}
+                        <option value="{{ region.name }}" 
+                                {% if current_filters.region == region.name %}selected{% endif %}>
+                            {{ region.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="mt-3">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-search"></i> Apply Filters
+                </button>
+                <a href="{{ url_for('alerts') }}" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> Clear Filters
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Alerts List -->
+<div class="row" id="alerts-container">
+    {% if alerts %}
+        {% for alert in alerts %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card h-100 alert-card" data-alert-id="{{ alert.id }}">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        {% if alert.severity.value == 'critical' %}
+                            <span class="badge bg-danger me-2">
+                                <i class="fas fa-exclamation-circle"></i> Critical
+                            </span>
+                        {% elif alert.severity.value == 'high' %}
+                            <span class="badge bg-warning me-2">
+                                <i class="fas fa-exclamation-triangle"></i> High
+                            </span>
+                        {% elif alert.severity.value == 'medium' %}
+                            <span class="badge bg-info me-2">
+                                <i class="fas fa-info-circle"></i> Medium
+                            </span>
+                        {% else %}
+                            <span class="badge bg-secondary me-2">
+                                <i class="fas fa-circle"></i> Low
+                            </span>
+                        {% endif %}
+                        
+                        {% if alert.disaster_type.value == 'fire' %}
+                            <i class="fas fa-fire text-danger"></i>
+                        {% elif alert.disaster_type.value == 'flood' %}
+                            <i class="fas fa-water text-primary"></i>
+                        {% elif alert.disaster_type.value == 'earthquake' %}
+                            <i class="fas fa-house-crack text-warning"></i>
+                        {% elif alert.disaster_type.value == 'landslide' %}
+                            <i class="fas fa-mountain text-info"></i>
+                        {% elif alert.disaster_type.value == 'cyclone' %}
+                            <i class="fas fa-wind text-secondary"></i>
+                        {% else %}
+                            <i class="fas fa-exclamation-triangle"></i>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" 
+                                type="button" data-bs-toggle="dropdown">
+                            Actions
+                        </button>
+                        <ul class="dropdown-menu">
+                            {% if alert.status.value == 'active' %}
+                            <li>
+                                <form method="POST" action="{{ url_for('acknowledge_alert', alert_id=alert.id) }}" class="m-0">
+                                    <button type="submit" class="dropdown-item">
+                                        <i class="fas fa-check text-success"></i> Acknowledge
+                                    </button>
+                                </form>
+                            </li>
+                            {% endif %}
+                            {% if alert.status.value in ['active', 'acknowledged'] %}
+                            <li>
+                                <form method="POST" action="{{ url_for('resolve_alert', alert_id=alert.id) }}" class="m-0">
+                                    <button type="submit" class="dropdown-item">
+                                        <i class="fas fa-check-double text-primary"></i> Resolve
+                                    </button>
+                                </form>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <h6 class="card-title">{{ alert.title }}</h6>
+                    <p class="card-text text-muted small">{{ alert.description }}</p>
+                    
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <div class="border rounded p-2 text-center">
+                                <div class="fw-bold">{{ alert.region.name }}</div>
+                                <small class="text-muted">Region</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border rounded p-2 text-center">
+                                <div class="fw-bold">{{ (alert.confidence_score * 100)|round|int }}%</div>
+                                <small class="text-muted">Confidence</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if alert.estimated_affected_population %}
+                    <div class="mb-2">
+                        <small class="text-muted">
+                            <i class="fas fa-users"></i> 
+                            Estimated affected: {{ "{:,}".format(alert.estimated_affected_population) }} people
+                        </small>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="card-footer">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            {% if alert.status.value == 'active' %}
+                                <span class="badge bg-danger">
+                                    <i class="fas fa-circle"></i> Active
+                                </span>
+                            {% elif alert.status.value == 'acknowledged' %}
+                                <span class="badge bg-warning">
+                                    <i class="fas fa-eye"></i> Acknowledged
+                                </span>
+                            {% elif alert.status.value == 'resolved' %}
+                                <span class="badge bg-success">
+                                    <i class="fas fa-check"></i> Resolved
+                                </span>
+                            {% else %}
+                                <span class="badge bg-secondary">
+                                    <i class="fas fa-times"></i> Dismissed
+                                </span>
+                            {% endif %}
+                        </div>
+                        <small class="text-muted">
+                            {{ alert.detected_at.strftime('%d/%m/%Y %H:%M') }}
+                        </small>
+                    </div>
+                    
+                    {% if alert.acknowledged_by %}
+                    <div class="mt-1">
+                        <small class="text-muted">
+                            <i class="fas fa-user"></i> Acknowledged by {{ alert.acknowledged_by.full_name }}
+                        </small>
+                    </div>
+                    {% endif %}
+                    
+                    {% if alert.resolved_by %}
+                    <div class="mt-1">
+                        <small class="text-muted">
+                            <i class="fas fa-user-check"></i> Resolved by {{ alert.resolved_by.full_name }}
+                        </small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-shield-alt fa-4x text-muted mb-3"></i>
+                    <h4 class="text-muted">No Alerts Found</h4>
+                    <p class="text-muted">
+                        {% if current_filters.severity or current_filters.status or current_filters.disaster_type or current_filters.region %}
+                            No alerts match your current filter criteria.
+                        {% else %}
+                            The system is currently monitoring and no alerts have been generated.
+                        {% endif %}
+                    </p>
+                    {% if current_filters.severity or current_filters.status or current_filters.disaster_type or current_filters.region %}
+                    <a href="{{ url_for('alerts') }}" class="btn btn-primary">
+                        <i class="fas fa-times"></i> Clear Filters
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/alerts.js') }}"></script>
+{% endblock %}

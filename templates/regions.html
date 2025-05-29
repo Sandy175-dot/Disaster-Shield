@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+
+{% block title %}Regions - AI Disaster Management System{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="fas fa-map-marked-alt text-primary"></i>
+        Regional Monitoring
+    </h2>
+    <div class="badge bg-info fs-6">
+        {{ regions|length }} regions configured
+    </div>
+</div>
+
+<!-- Regions Map -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-globe"></i> Monitoring Regions Overview
+        </h5>
+    </div>
+    <div class="card-body p-0">
+        <div id="regions-overview-map" style="height: 500px;"></div>
+    </div>
+</div>
+
+<!-- Regions Grid -->
+<div class="row">
+    {% for region, monitoring_status in regions %}
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100 region-card" data-region-id="{{ region.id }}">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">
+                    <i class="fas fa-map-pin"></i>
+                    {{ region.name }}
+                </h6>
+                
+                {% if monitoring_status %}
+                    {% if monitoring_status.is_monitoring %}
+                        <span class="badge bg-success">
+                            <i class="fas fa-eye"></i> Monitoring
+                        </span>
+                    {% else %}
+                        <span class="badge bg-secondary">
+                            <i class="fas fa-eye-slash"></i> Inactive
+                        </span>
+                    {% endif %}
+                {% else %}
+                    <span class="badge bg-warning">
+                        <i class="fas fa-question"></i> Unknown
+                    </span>
+                {% endif %}
+            </div>
+            
+            <div class="card-body">
+                <p class="card-text text-muted small mb-3">{{ region.description }}</p>
+                
+                <!-- Region Statistics -->
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <div class="border rounded p-2 text-center">
+                            <div class="fw-bold text-primary">
+                                {% if region.population %}
+                                    {{ "{:,.0f}M".format(region.population / 1000000) }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </div>
+                            <small class="text-muted">Population</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="border rounded p-2 text-center">
+                            <div class="fw-bold">{{ region.risk_level.title() }}</div>
+                            <small class="text-muted">Risk Level</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Monitoring Status -->
+                {% if monitoring_status %}
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <div class="border rounded p-2 text-center">
+                            {% if monitoring_status.threat_level == 'critical' %}
+                                <div class="fw-bold text-danger">Critical</div>
+                            {% elif monitoring_status.threat_level == 'high' %}
+                                <div class="fw-bold text-warning">High</div>
+                            {% elif monitoring_status.threat_level == 'medium' %}
+                                <div class="fw-bold text-info">Medium</div>
+                            {% elif monitoring_status.threat_level == 'low' %}
+                                <div class="fw-bold text-success">Low</div>
+                            {% else %}
+                                <div class="fw-bold text-secondary">Normal</div>
+                            {% endif %}
+                            <small class="text-muted">Threat Level</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="border rounded p-2 text-center">
+                            <div class="fw-bold">{{ monitoring_status.anomalies_detected or 0 }}</div>
+                            <small class="text-muted">Anomalies</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Last Analysis Info -->
+                {% if monitoring_status.last_analysis_at %}
+                <div class="mb-3">
+                    <small class="text-muted">
+                        <i class="fas fa-clock"></i>
+                        Last analysis: {{ monitoring_status.last_analysis_at.strftime('%d/%m/%Y %H:%M') }}
+                    </small>
+                    {% if monitoring_status.processing_time_seconds %}
+                    <br>
+                    <small class="text-muted">
+                        <i class="fas fa-stopwatch"></i>
+                        Processing time: {{ "%.1f"|format(monitoring_status.processing_time_seconds) }}s
+                    </small>
+                    {% endif %}
+                </div>
+                {% endif %}
+                {% endif %}
+                
+                <!-- Geographic Information -->
+                <div class="border rounded p-2 mb-3 bg-dark">
+                    <small class="text-muted">
+                        <strong>Coordinates:</strong><br>
+                        Center: {{ "%.3f"|format(region.center_latitude) }}, {{ "%.3f"|format(region.center_longitude) }}<br>
+                        Bounds: {{ "%.3f"|format(region.min_latitude) }}, {{ "%.3f"|format(region.min_longitude) }} to 
+                        {{ "%.3f"|format(region.max_latitude) }}, {{ "%.3f"|format(region.max_longitude) }}
+                    </small>
+                </div>
+            </div>
+            
+            <div class="card-footer">
+                <div class="d-flex gap-2">
+                    <form method="POST" action="{{ url_for('analyze_region', region_id=region.id) }}" class="flex-fill">
+                        <button type="submit" class="btn btn-primary w-100 analyze-btn" data-region="{{ region.name }}">
+                            <i class="fas fa-search"></i> Analyze
+                        </button>
+                    </form>
+                    <button type="button" class="btn btn-outline-secondary view-map-btn" 
+                            data-region-id="{{ region.id }}"
+                            data-region-name="{{ region.name }}"
+                            data-center-lat="{{ region.center_latitude }}"
+                            data-center-lon="{{ region.center_longitude }}"
+                            data-min-lat="{{ region.min_latitude }}"
+                            data-min-lon="{{ region.min_longitude }}"
+                            data-max-lat="{{ region.max_latitude }}"
+                            data-max-lon="{{ region.max_longitude }}">
+                        <i class="fas fa-map"></i>
+                    </button>
+                </div>
+                
+                <div class="mt-2 text-center">
+                    <small class="text-muted">
+                        {% set alert_count = region.alerts|selectattr('status.value', 'in', ['active', 'acknowledged'])|list|length %}
+                        {% if alert_count > 0 %}
+                            <i class="fas fa-exclamation-triangle text-warning"></i>
+                            <a href="{{ url_for('alerts', region=region.name) }}" class="text-warning">
+                                {{ alert_count }} active alert{{ 's' if alert_count != 1 else '' }}
+                            </a>
+                        {% else %}
+                            <i class="fas fa-shield-alt text-success"></i>
+                            No active alerts
+                        {% endif %}
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Region Detail Modal -->
+<div class="modal fade" id="regionDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-map-marked-alt"></i>
+                    <span id="modal-region-name">Region Details</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="region-detail-map" style="height: 400px;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/maps.js') }}"></script>
+
+<script>
+// Initialize regional data for maps
+const regionData = [
+    {% for region, monitoring_status in regions %}
+    {
+        id: {{ region.id }},
+        name: "{{ region.name }}",
+        description: "{{ region.description }}",
+        center: [{{ region.center_latitude }}, {{ region.center_longitude }}],
+        bounds: [
+            [{{ region.min_latitude }}, {{ region.min_longitude }}],
+            [{{ region.max_latitude }}, {{ region.max_longitude }}]
+        ],
+        threatLevel: "{% if monitoring_status %}{{ monitoring_status.threat_level }}{% else %}normal{% endif %}",
+        isMonitoring: {% if monitoring_status and monitoring_status.is_monitoring %}true{% else %}false{% endif %},
+        population: {{ region.population or 0 }},
+        riskLevel: "{{ region.risk_level }}",
+        anomalies: {% if monitoring_status %}{{ monitoring_status.anomalies_detected or 0 }}{% else %}0{% endif %}
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize the overview map
+    initializeRegionsOverviewMap(regionData);
+    
+    // Handle view map buttons
+    document.querySelectorAll('.view-map-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const regionId = this.dataset.regionId;
+            const regionName = this.dataset.regionName;
+            const region = regionData.find(r => r.id == regionId);
+            
+            if (region) {
+                showRegionDetailModal(region);
+            }
+        });
+    });
+    
+    // Handle analyze buttons with loading state
+    document.querySelectorAll('.analyze-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const regionName = this.dataset.region;
+            const originalText = this.innerHTML;
+            
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
+            
+            // The form will submit and page will reload, so this is just visual feedback
+            setTimeout(() => {
+                this.disabled = false;
+                this.innerHTML = originalText;
+            }, 5000);
+        });
+    });
+});
+
+function showRegionDetailModal(region) {
+    document.getElementById('modal-region-name').textContent = region.name;
+    
+    const modal = new bootstrap.Modal(document.getElementById('regionDetailModal'));
+    modal.show();
+    
+    // Initialize detail map when modal is shown
+    document.getElementById('regionDetailModal').addEventListener('shown.bs.modal', function () {
+        initializeRegionDetailMap(region);
+    }, { once: true });
+}
+</script>
+{% endblock %}

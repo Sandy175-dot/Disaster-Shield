@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Login - AI Disaster Management System{% endblock %}
+
+{% block content %}
+<div class="min-vh-100 d-flex align-items-center justify-content-center">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6 col-lg-4">
+                <div class="card shadow-lg">
+                    <div class="card-body p-5">
+                        <div class="text-center mb-4">
+                            <i class="fas fa-shield-alt text-primary fa-3x mb-3"></i>
+                            <h2 class="card-title">Disaster Management System</h2>
+                            <p class="text-muted">AI-Enabled Emergency Response Platform</p>
+                        </div>
+
+                        <form method="POST">
+                            <div class="mb-3">
+                                <label for="username" class="form-label">
+                                    <i class="fas fa-user"></i> Username
+                                </label>
+                                <input type="text" class="form-control" id="username" name="username" 
+                                       placeholder="Enter your username" required autofocus>
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="password" class="form-label">
+                                    <i class="fas fa-lock"></i> Password
+                                </label>
+                                <input type="password" class="form-control" id="password" name="password" 
+                                       placeholder="Enter your password" required>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary w-100 mb-3">
+                                <i class="fas fa-sign-in-alt"></i> Sign In
+                            </button>
+                        </form>
+
+                        <div class="text-center">
+                            <hr>
+                            <div class="row text-muted small">
+                                <div class="col-12 mb-2">
+                                    <strong>Demo Account:</strong>
+                                </div>
+                                <div class="col-12">
+                                    <div class="border rounded p-2 bg-dark">
+                                        <strong>Username:</strong> admin<br>
+                                        <strong>Password:</strong> admin123
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- System Features -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="fas fa-info-circle"></i> System Features
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-satellite text-primary me-2"></i>
+                                    <small>Satellite Data Analysis</small>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-brain text-success me-2"></i>
+                                    <small>AI Disaster Detection</small>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-bell text-warning me-2"></i>
+                                    <small>Real-time Alerts</small>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-map text-info me-2"></i>
+                                    <small>Geographic Monitoring</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
